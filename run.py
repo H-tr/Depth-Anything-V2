@@ -5,6 +5,7 @@ import matplotlib
 import numpy as np
 import os
 import torch
+from PIL import Image
 
 from depth_anything_v2.dpt import DepthAnythingV2
 
@@ -56,18 +57,11 @@ if __name__ == '__main__':
         
         depth = depth_anything.infer_image(raw_image, args.input_size)
         
-        depth = (depth - depth.min()) / (depth.max() - depth.min()) * 255.0
+        depth = (1 - (depth - depth.min()) / (depth.max() - depth.min())) * 255.0
         depth = depth.astype(np.uint8)
         
-        if args.grayscale:
-            depth = np.repeat(depth[..., np.newaxis], 3, axis=-1)
-        else:
-            depth = (cmap(depth)[:, :, :3] * 255)[:, :, ::-1].astype(np.uint8)
+        depth_img = Image.fromarray(depth)
         
-        if args.pred_only:
-            cv2.imwrite(os.path.join(args.outdir, os.path.splitext(os.path.basename(filename))[0] + '.png'), depth)
-        else:
-            split_region = np.ones((raw_image.shape[0], 50, 3), dtype=np.uint8) * 255
-            combined_result = cv2.hconcat([raw_image, split_region, depth])
-            
-            cv2.imwrite(os.path.join(args.outdir, os.path.splitext(os.path.basename(filename))[0] + '.png'), combined_result)
+        depth_img.save(
+            os.path.join(args.outdir, os.path.basename(filename).replace('.jpg', '.png'))
+        )
